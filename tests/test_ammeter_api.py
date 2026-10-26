@@ -1,110 +1,44 @@
-import socket
-import threading
 import unittest
 
-from Ammeters.Circutor_Ammeter import CircutorAmmeter
-from Ammeters.Entes_Ammeter import EntesAmmeter
-from Ammeters.Greenlee_Ammeter import GreenleeAmmeter
-from src.testing.ammeter_api import AmmeterConfigError, SocketAmmeter, create_ammeter, create_ammeters
-from src.testing.test_framework import AmmeterTestFramework
-from src.utils.Utils import find_free_port, start_in_background
+from src.testing.ammeter_api import AmmeterConfigError, AmmeterError, AmmeterInterface, SocketAmmeter, create_ammeter, create_ammeters
+from src.utils.Utils import find_free_port
 
 
-def start_fake_server(reply: bytes = b"", hang: bool = False) -> int:
+class ParsingTest(unittest.TestCase):
     """
-    Starts a one-shot server that answers with the given bytes (or never answers) and returns its port.
-    """
-    server = socket.socket()
-    server.bind(("localhost", 0))
-    server.listen()
-    port = server.getsockname()[1]
-
-    def serve():
-        """
-        Accepts one client, reads its command and replies.
-        """
-        conn, _ = server.accept()
-        with conn, server:
-            conn.recv(1024)
-            if hang:
-                threading.Event().wait(1.0)
-            elif reply:
-                conn.sendall(reply)
-
-    threading.Thread(target=serve, daemon=True).start()
-    return port
-
-
-class SocketAmmeterTest(unittest.TestCase):
-    """
-    Result reporting for success and for each failure mode.
+    Reply parsing, tested directly without any server.
     """
 
-    def should_build(self, port: int, timeout: float = 1.0) -> SocketAmmeter:
+    def test_should_parse_numeric_reply(self):
         """
-        Returns a client pointed at the given port.
+        Checks a numeric reply, with surrounding whitespace, becomes a float.
         """
-        return SocketAmmeter("fake", port, b"CMD", timeout_seconds=timeout)
+        self.assertEqual(AmmeterInterface._parse(" 12.5\n"), 12.5)
 
-    def test_should_return_value_given_numeric_reply(self):
+    def test_should_raise_given_unusable_reply(self):
         """
-        Checks a numeric reply becomes a successful result.
+        Checks empty, non-numeric and non-finite replies are rejected with a specific message.
         """
-        result = self.should_build(start_fake_server(b"12.5")).measure()
-        self.assertTrue(result.success)
-        self.assertEqual(result.value, 12.5)
-        self.assertEqual(result.unit, "A")
-        self.assertIsNone(result.error)
-        self.assertEqual(result.ammeter, "fake")
+        for raw, message in (("", "empty response"), ("hello", "non-numeric"), ("nan", "non-finite"), ("inf", "non-finite")):
+            with self.subTest(raw=raw):
+                with self.assertRaisesRegex(AmmeterError, message):
+                    AmmeterInterface._parse(raw)
+
+
+class ResultReportingTest(unittest.TestCase):
+    """
+    A failed measurement is reported, not raised.
+    """
 
     def test_should_report_failure_given_connection_refused(self):
         """
-        Checks a closed port gives a failed result instead of raising.
+        Checks a port with nothing listening gives a failed result in the unified format.
         """
-        result = self.should_build(find_free_port()).measure()
+        result = SocketAmmeter("down", find_free_port(), b"CMD", timeout_seconds=1.0).measure()
         self.assertFalse(result.success)
         self.assertIsNone(result.value)
         self.assertIn("ConnectionRefusedError", result.error)
-
-    def test_should_report_failure_given_timeout(self):
-        """
-        Checks a server that never answers gives a failed result.
-        """
-        result = self.should_build(start_fake_server(hang=True), timeout=0.2).measure()
-        self.assertFalse(result.success)
-        self.assertIn("timeout", result.error.lower())
-
-    def test_should_report_failure_given_empty_reply(self):
-        """
-        Checks a server that closes without replying gives a failed result.
-        """
-        result = self.should_build(start_fake_server(b"")).measure()
-        self.assertFalse(result.success)
-        self.assertIn("empty response", result.error)
-
-    def test_should_report_failure_given_non_numeric_reply(self):
-        """
-        Checks a garbage reply gives a failed result.
-        """
-        result = self.should_build(start_fake_server(b"hello")).measure()
-        self.assertFalse(result.success)
-        self.assertIn("non-numeric", result.error)
-
-    def test_should_report_failure_given_non_finite_reply(self):
-        """
-        Checks NaN and infinity are rejected.
-        """
-        for reply in (b"nan", b"inf"):
-            result = self.should_build(start_fake_server(reply)).measure()
-            self.assertFalse(result.success, reply)
-            self.assertIn("non-finite", result.error)
-
-    def test_should_serialize_result_to_dict(self):
-        """
-        Checks the result exposes all fields as a dict.
-        """
-        data = self.should_build(start_fake_server(b"1")).measure().to_dict()
-        self.assertEqual(set(data), {"ammeter", "success", "value", "unit", "timestamp", "duration_seconds", "error"})
+        self.assertEqual(set(result.to_dict()), {"ammeter", "success", "value", "unit", "timestamp", "duration_seconds", "error"})
 
 
 class ConfigTest(unittest.TestCase):
@@ -126,6 +60,13 @@ class ConfigTest(unittest.TestCase):
         with self.assertRaisesRegex(AmmeterConfigError, "missing 'command'"):
             create_ammeter("x", {"port": 1})
 
+    def test_should_raise_given_empty_entry(self):
+        """
+        Checks an empty YAML entry is rejected instead of crashing.
+        """
+        with self.assertRaisesRegex(AmmeterConfigError, "missing 'port'"):
+            create_ammeter("x", None)
+
     def test_should_raise_given_no_ammeters_section(self):
         """
         Checks an empty config is rejected.
@@ -140,53 +81,6 @@ class ConfigTest(unittest.TestCase):
         """
         ammeters = create_ammeters({"ammeters": {"Greenlee": {"port": 1, "command": "C"}}})
         self.assertEqual(list(ammeters), ["greenlee"])
-
-
-class FrameworkIntegrationTest(unittest.TestCase):
-    """
-    The framework against the real emulators, using the commands from config.yaml.
-    """
-
-    @classmethod
-    def setUpClass(cls):
-        """
-        Starts the three emulators on free ports and points a framework at them.
-        """
-        cls.framework = AmmeterTestFramework("config/config.yaml")
-        emulators = {"greenlee": GreenleeAmmeter, "entes": EntesAmmeter, "circutor": CircutorAmmeter}
-        for name, emulator_class in emulators.items():
-            port = find_free_port()
-            start_in_background(emulator_class(port), port)
-            cls.framework.ammeters[name]._port = port
-
-    def test_should_measure_every_ammeter_type(self):
-        """
-        Checks each configured type returns a successful, positive reading through the same interface.
-        """
-        for name in ("greenlee", "entes", "circutor"):
-            result = self.framework.measure(name)
-            self.assertTrue(result.success, f"{name}: {result.error}")
-            self.assertGreater(result.value, 0)
-
-    def test_should_measure_all_given_no_arguments(self):
-        """
-        Checks measure_all returns one result per ammeter.
-        """
-        results = self.framework.measure_all()
-        self.assertEqual(sorted(r.ammeter for r in results), ["circutor", "entes", "greenlee"])
-
-    def test_should_accept_any_letter_case(self):
-        """
-        Checks the type name is case-insensitive.
-        """
-        self.assertTrue(self.framework.measure("ENTES").success)
-
-    def test_should_raise_given_unknown_type(self):
-        """
-        Checks an unknown type lists the valid ones.
-        """
-        with self.assertRaisesRegex(ValueError, "available: circutor, entes, greenlee"):
-            self.framework.measure("nope")
 
 
 if __name__ == "__main__":

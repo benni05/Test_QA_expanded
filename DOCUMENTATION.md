@@ -88,11 +88,11 @@ Installed from `requirements.txt`:
 - **Framework entry point.** `AmmeterTestFramework` provides `measure(type)`, `measure_all()` and `get_ammeter(type)`. Type names are case-insensitive and an unknown type lists the valid ones.
 - **Shared helpers** in `src/utils/Utils.py`: `find_free_port`, `wait_for_port` and `start_in_background`, used by `main.py` and the tests.
 
-### Tests (`tests/test_ammeter_api.py`)
+### Tests
 
-- Failure modes (connection refused, timeout, empty, non-numeric and non-finite replies) are tested against a small fake server, because the real emulators cannot produce bad replies on demand.
-- Config validation is tested directly.
-- Integration tests run the framework against the three real emulators on free ports, using the commands from `config.yaml`.
+- `tests/test_ammeters.py` validates the **real emulators** through the framework, using the commands from `config.yaml`: readings stay inside the range implied by the documented measurement logic, readings vary, the sample mean of ENTES and CIRCUTOR is near the analytical mean (Greenlee's V/R is heavy-tailed, so it is excluded), an ammeter ignores another ammeter's command, the server keeps serving after an invalid command, and concurrent clients all get valid readings.
+- `tests/test_ammeter_api.py` covers the client code without any server: reply parsing (empty, non-numeric, NaN/infinity), a refused connection reported as a failed result, and config validation.
+- No test uses a fake server; every test that talks to an ammeter talks to a real emulator.
 
 ### Not implemented yet
 
