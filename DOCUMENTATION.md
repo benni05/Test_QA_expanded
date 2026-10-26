@@ -11,7 +11,8 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-- Run: `.venv/bin/python main.py`
+- Run the emulators and take one measurement from each: `.venv/bin/python main.py`
+- Run the tests: `.venv/bin/python -m unittest discover -s tests -t .` (standard-library `unittest`, no extra dependency)
 
 ## Libraries installed
 
@@ -42,7 +43,7 @@ Installed from `requirements.txt`:
 | ENTES | 5002 | `MEASURE_ENTES -get_data` |
 | CIRCUTOR | 5003 | `MEASURE_CIRCUTOR -get_measurement` |
 
-- **File:** `main.py`.
+- **File:** `main.py`. It has since been rewritten to read the ports from `config/config.yaml`, start the emulators with `start_in_background`, and print `framework.measure_all()`. The fixed `sleep(5)` was replaced by waiting until each port accepts connections.
 
 ### 2. "Address already in use" when restarting
 
@@ -59,14 +60,40 @@ Installed from `requirements.txt`:
 - **Fix:** removed the suffix from the emulator so the command matches the README, the config, and Greenlee's `-get_measurement` pattern. The client call in `main.py` was updated to match.
 - **Files:** `Ammeters/Circutor_Ammeter.py`, `main.py`.
 
+### 4. `test_framework.py` crashed on import
+
+- **Symptom:** importing `src/testing/test_framework.py` raised `NameError: name 'Dict' is not defined`.
+- **Cause:** `Dict` was used in an annotation without being imported from `typing`; `run_test` was also an empty stub.
+- **Fix:** rewrote the module on top of the new measurement API (see Design decisions). `run_test` raises `NotImplementedError` until sampling is implemented.
+- **File:** `src/testing/test_framework.py`.
+
 ## Known inconsistencies (not yet addressed)
 
 - The README lists ports 5000, 5001 and 5002; the code uses 5001, 5002 and 5003. The code is internally consistent.
 - ENTES uses `-get_data` while the others use `-get_measurement`. This matches the README, so it is treated as intentional; the framework should read each command from configuration instead of assuming a shared one.
 - The README mentions `AmmeterTester.py`, `Ammeters/main.py` and `examples/run_test.py`; the actual files are `src/testing/test_framework.py`, `main.py` and `examples/run_tests.py`.
-- `src/testing/test_framework.py` is a stub (missing `Dict` import, `run_test` unimplemented) and `src/utils/logger.py` never attaches a handler.
-- `config/config.yaml` is empty (NULL values).
+- `src/utils/logger.py` never attaches a handler, so nothing is logged.
+- The `testing.sampling`, `analysis` and `result_management` sections of `config/config.yaml` are still empty (only `ammeters` is filled).
+- `Ammeters/client.py` is no longer used by `main.py`; it is left as supplied.
 
 ## Design decisions
 
-To be added when the testing framework is implemented.
+### 1. Unified Measurement API (`src/testing/ammeter_api.py`)
+
+- **One result format.** `MeasurementResult` (ammeter, success, value, unit, UTC timestamp, duration, error) is returned for every ammeter, for successes and failures alike. `to_dict()` makes it JSON-ready for the later archiving step.
+- **`measure()` never raises.** Connection errors, timeouts, empty replies, non-numeric replies and NaN/infinity are all reported through the result (`success=False` plus an error message), so a sampling loop can record a failure and keep going.
+- **Template method.** `AmmeterInterface.measure()` handles timing, parsing and error reporting; a subclass only implements `_read_raw()`. A new ammeter type or a transport other than TCP needs one small class.
+- **Configuration-driven.** Ports and commands come from `config/config.yaml`, so differences between ammeters (for example ENTES's `-get_data`) live in config rather than code. `host` and `timeout_seconds` are optional per ammeter. Invalid config raises `AmmeterConfigError` with a clear message.
+- **Robust socket read.** The client reads until the server closes the connection (capped at 4096 bytes) instead of assuming one `recv` returns the whole reply.
+- **Framework entry point.** `AmmeterTestFramework` provides `measure(type)`, `measure_all()` and `get_ammeter(type)`. Type names are case-insensitive and an unknown type lists the valid ones.
+- **Shared helpers** in `src/utils/Utils.py`: `find_free_port`, `wait_for_port` and `start_in_background`, used by `main.py` and the tests.
+
+### Tests (`tests/test_ammeter_api.py`)
+
+- Failure modes (connection refused, timeout, empty, non-numeric and non-finite replies) are tested against a small fake server, because the real emulators cannot produce bad replies on demand.
+- Config validation is tested directly.
+- Integration tests run the framework against the three real emulators on free ports, using the commands from `config.yaml`.
+
+### Not implemented yet
+
+Measurement sampling, result analysis, result archiving, accuracy assessment and the bonus challenges.
