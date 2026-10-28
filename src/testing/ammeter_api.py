@@ -1,10 +1,13 @@
 import math
+import random
 import socket
 import time
 from abc import ABC, abstractmethod
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Dict, Optional
+
+from ..utils.errors import FrameworkError
 
 DEFAULT_HOST = "localhost"
 DEFAULT_TIMEOUT_SECONDS = 2.0
@@ -13,13 +16,13 @@ MAX_RESPONSE_BYTES = 4096
 CURRENT_UNIT = "A"
 
 
-class AmmeterError(Exception):
+class AmmeterError(FrameworkError):
     """
     Raised when an ammeter replies with something unusable.
     """
 
 
-class AmmeterConfigError(ValueError):
+class AmmeterConfigError(FrameworkError):
     """
     Raised when the ammeter configuration is missing or invalid.
     """
@@ -38,12 +41,6 @@ class MeasurementResult:
     timestamp: str
     duration_seconds: float
     error: Optional[str]
-
-    def to_dict(self) -> Dict:
-        """
-        Returns the result as a plain dict, ready for JSON serialization.
-        """
-        return asdict(self)
 
 
 class AmmeterInterface(ABC):
@@ -111,8 +108,8 @@ class AmmeterInterface(ABC):
         # Reject non-numeric replies
         try:
             value = float(text)
-        except ValueError:
-            raise AmmeterError(f"non-numeric response: {text[:50]!r}")
+        except ValueError as exc:
+            raise AmmeterError(f"non-numeric response: {text[:50]!r}") from exc
 
         # Reject NaN and infinity
         if not math.isfinite(value):
@@ -158,9 +155,40 @@ class SocketAmmeter(AmmeterInterface):
         return b"".join(chunks).decode("utf-8", errors="replace")
 
 
+class FaultInjectingAmmeter(AmmeterInterface):
+    """
+    Wraps another ammeter and makes a fraction of its reads fail in realistic ways (dropped connection, timeout, empty, garbage or non-finite reply).
+    """
+
+    FAULTS = (ConnectionResetError("simulated connection reset"), TimeoutError("simulated timeout"), "", "garbage", "nan")
+
+    def __init__(self, inner: AmmeterInterface, error_rate: float, seed: Optional[int] = None):
+        """
+        Stores the wrapped ammeter and the failure probability (0 to 1); a seed makes the failures repeatable.
+        """
+        if not 0 <= error_rate <= 1:
+            raise AmmeterConfigError(f"ammeter '{inner.name}': error_rate must be between 0 and 1")
+        super().__init__(inner.name)
+        self._inner = inner
+        self._error_rate = error_rate
+        self._random = random.Random(seed)
+
+    def _read_raw(self) -> str:
+        """
+        Returns the wrapped ammeter's reply, or with the configured probability raises or returns a faulty one.
+        """
+        if self._random.random() >= self._error_rate:
+            return self._inner._read_raw()
+        fault = self._random.choice(self.FAULTS)
+        if isinstance(fault, Exception):
+            raise fault
+
+        return fault
+
+
 def create_ammeter(name: str, settings: Optional[Dict]) -> AmmeterInterface:
     """
-    Builds an ammeter from one entry of the "ammeters" config section. Requires port and command.
+    Builds an ammeter from one entry of the "ammeters" config section. Requires port and command; an optional error_rate (and error_seed) simulates failures.
     """
     # Validate the entry (an empty YAML entry loads as None)
     settings = settings or {}
@@ -169,13 +197,16 @@ def create_ammeter(name: str, settings: Optional[Dict]) -> AmmeterInterface:
             raise AmmeterConfigError(f"ammeter '{name}': missing '{key}'")
 
     # Build the socket ammeter, applying defaults for optional keys
-    return SocketAmmeter(
+    ammeter = SocketAmmeter(
         name=name,
         port=int(settings["port"]),
         command=str(settings["command"]).encode("utf-8"),
         host=settings.get("host", DEFAULT_HOST),
         timeout_seconds=float(settings.get("timeout_seconds", DEFAULT_TIMEOUT_SECONDS)),
     )
+
+    # Simulate failures if asked to
+    return FaultInjectingAmmeter(ammeter, float(settings["error_rate"]), settings.get("error_seed")) if settings.get("error_rate") else ammeter
 
 
 def create_ammeters(config: Dict) -> Dict[str, AmmeterInterface]:

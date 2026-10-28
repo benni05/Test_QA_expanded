@@ -1,54 +1,32 @@
-# Ammeter Emulators
+# Ammeter Testing Framework
 
-This project provides emulators for different types of ammeters: Greenlee, ENTES, and CIRCUTOR. Each ammeter emulator runs on a separate thread and can respond to current measurement requests.
+Tests three ammeter emulators (Greenlee, ENTES, CIRCUTOR): samples each one, analyzes and plots the readings, compares the ammeters' precision and accuracy, and archives every run.
 
-## Project Structure
+## Setup and usage
 
-- `Ammeters/`
-  - `main.py`: Main script to start the ammeter emulators and request current measurements.
-  - `Circutor_Ammeter.py`: Emulator for the CIRCUTOR ammeter.
-  - `Entes_Ammeter.py`: Emulator for the ENTES ammeter.
-  - `Greenlee_Ammeter.py`: Emulator for the Greenlee ammeter.
-  - `base_ammeter.py`: Base class for all ammeter emulators.
-  - `client.py`: Client to request current measurements from the ammeter emulators.
-- `config/`
-  - `config.yaml`: Configuration file for the ammeter emulators.
-- `examples/`
-  - `run_test.py`: super lyze example for run test **don't use it**.
-- `src/`
-  - `testing/`
-    - `AmmeterTester.py`: Class to test the ammeter emulators.
-  - `utils/`
-    - `config.py`: Configuration settings.
-    - `logger.py`: Logging setup.
-    - `Utils.py`: Utility functions, including `generate_random_float`.
-
-## Usage
-
-# Ammeter Emulators
-
-## Greenlee Ammeter
-
-- **Port**: 5000
-- **Command**: `MEASURE_GREENLEE -get_measurement`
-- **Measurement Logic**: Calculates current using voltage (1V - 10V) and (0.1Ω - 100Ω).
-- **Measurement method** : Ohm's Law: I = V / R
-
-## ENTES Ammeter
-
-- **Port**: 5001
-- **Command**: `MEASURE_ENTES -get_data`
-- **Measurement Logic**: Calculates current using magnetic field strength (0.01T - 0.1T) and calibration factor (500 - 2000).
-- **Measurement method** : Hall Effect: I = B * K
-
-## CIRCUTOR Ammeter
-
-- **Port**: 5002
-- **Command**: `MEASURE_CIRCUTOR -get_measurement`
-- **Measurement Logic**: Calculates current using voltage values (0.1V - 1.0V) over a number of samples and a random time step (0.001s - 0.01s).
-- **Measurement method** : Rogowski Coil Integration: I = ∫V dt
-
-To start the ammeter emulators and request current measurements, run the `main.py` script:
 ```sh
-python main.py
+python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
+.venv/bin/python main.py [label]                      # start the emulators, test every ammeter, archive and print the report
+.venv/bin/python history.py list                      # archived runs
+.venv/bin/python history.py show latest               # reprint a run (or give a run id)
+.venv/bin/python history.py compare <id> <id> ...     # compare runs side by side
+.venv/bin/python -m pytest tests                      # unit tests (no emulators needed)
 ```
+
+Everything is configured in `config/config.yaml`: ammeter ports and commands, sampling (set two of count, duration, frequency), statistics, plots, expected currents and the archive directory.
+Add `error_rate: 0.2` (and optionally `error_seed`) to an ammeter entry to simulate failed reads.
+
+## Project structure
+
+- `Ammeters/`: the emulators (`base_ammeter.py` plus one class per type) and a simple client.
+- `src/testing/`: `ammeter_api.py` (unified measurement API, fault injection), `sampler.py`, `analyzer.py`, `visualizer.py`, `accuracy.py`, `result_store.py`, `report.py`, `test_framework.py` (entry point).
+- `src/utils/`: `config.py` (loading and validation), `errors.py` (shared error types), `Utils.py` (helpers).
+- `tests/`: unit tests. `examples/run_tests.py`: minimal usage example. `DOCUMENTATION.md`: design decisions and findings.
+
+## Emulators
+
+| Ammeter | Port | Command | Method |
+| --- | --- | --- | --- |
+| Greenlee | 5001 | `MEASURE_GREENLEE -get_measurement` | Ohm's law, I = V / R (V 1-10 V, R 0.1-100 ohm) |
+| ENTES | 5002 | `MEASURE_ENTES -get_data` | Hall effect, I = B * K (B 0.01-0.1 T, K 500-2000) |
+| CIRCUTOR | 5003 | `MEASURE_CIRCUTOR -get_measurement` | Rogowski coil, I = integral of V dt (V 0.1-1 V, dt 0.001-0.01 s) |

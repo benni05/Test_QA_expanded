@@ -1,8 +1,9 @@
 testing:
+  # Set at least two of the three; the third follows from them
   sampling:
-    measurements_count: NULL
-    total_duration_seconds: NULL
-    sampling_frequency_hz: NULL
+    measurements_count: 20
+    total_duration_seconds: null
+    sampling_frequency_hz: 10
 
 # Connection settings per ammeter type. Optional keys: host (default "localhost"), timeout_seconds (default 2.0).
 ammeters:
@@ -16,10 +17,18 @@ ammeters:
     port: 5003
     command: "MEASURE_CIRCUTOR -get_measurement"
 
+# statistical_metrics: any of mean, median, std_dev, min, max. plot_types: any of time_series, histogram.
 analysis:
-  statistical_metrics:
+  statistical_metrics: [mean, median, std_dev, min, max]
   visualization:
     enabled: true
-    plot_types:
+    plot_types: [time_series, histogram]
+    output_dir: results/plots
+  accuracy:
+    confidence_level: 0.95
+    # Expected mean current (A) of each emulator, derived from the input ranges in the README: greenlee = 5.5 V * ln(1000) / 99.9 ohm, entes = 0.055 T * 1250, circutor = 10 * 0.55 V * 0.0055 s
+    expected_current_a: {greenlee: 0.3803, entes: 68.75, circutor: 0.03025}
 
+# Where finished runs are archived, one JSON file per run
 result_management:
+  directory: results/runs

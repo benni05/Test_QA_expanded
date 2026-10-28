@@ -1,6 +1,5 @@
 import random
 import socket
-import threading
 import time
 
 def generate_random_float(min_value: float, max_value: float) -> float:
@@ -8,33 +7,24 @@ def generate_random_float(min_value: float, max_value: float) -> float:
     return random.uniform(min_value, max_value)
 
 
-def find_free_port() -> int:
+def sleep_until(deadline: float) -> None:
     """
-    Returns a TCP port that is free right now.
+    Sleeps until time.perf_counter() reaches the deadline, spinning for the last 2 ms because time.sleep alone overshoots.
     """
-    with socket.socket() as s:
-        s.bind(("localhost", 0))
-        return s.getsockname()[1]
+    while (remaining := deadline - time.perf_counter()) > 0:
+        time.sleep(remaining * 0.9 if remaining > 0.002 else 0)
 
 
-def wait_for_port(port: int, timeout_seconds: float = 5.0) -> None:
+def wait_for_port(port: int, timeout_seconds: float = 10.0, host: str = "localhost") -> bool:
     """
-    Blocks until something accepts connections on the port, raising TimeoutError otherwise.
+    Waits until something accepts connections on the port and returns True, or returns False after the timeout.
     """
-    deadline = time.monotonic() + timeout_seconds
-    while time.monotonic() < deadline:
+    deadline = time.perf_counter() + timeout_seconds
+    while time.perf_counter() < deadline:
         try:
-            socket.create_connection(("localhost", port), timeout=0.2).close()
-            return
+            socket.create_connection((host, port), timeout=0.5).close()
+            return True
         except OSError:
-            time.sleep(0.05)
+            time.sleep(0.1)
 
-    raise TimeoutError(f"port {port} did not open within {timeout_seconds}s")
-
-
-def start_in_background(server, port: int) -> None:
-    """
-    Runs server.start_server() in a daemon thread and waits until its port is open.
-    """
-    threading.Thread(target=server.start_server, daemon=True).start()
-    wait_for_port(port)
+    return False
