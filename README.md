@@ -10,6 +10,11 @@ python3 -m venv .venv && source .venv/bin/activate && pip install -r requirement
 .venv/bin/python history.py list                      # archived runs
 .venv/bin/python history.py show latest               # reprint a run (or give a run id)
 .venv/bin/python history.py compare <id> <id> ...     # compare runs side by side
+```
+
+Two sample runs (JSON and plots) are committed under `results/` so the history commands work on a fresh clone.
+
+```sh
 .venv/bin/python -m pytest tests                      # unit tests (no emulators needed)
 ```
 

@@ -9,6 +9,7 @@ def _assess_ammeter(record: Dict, expected: Optional[float], confidence: float) 
     """
     Returns precision figures (spread, robust spread, confidence interval of the mean) and, if an expected value is given, the bias against it.
     """
+    # Successful readings only; a spread needs at least two of them
     values = [r["value"] for r in record["results"] if r["success"]]
     n = len(values)
     result = {"valid": n, "success_rate": record["analysis"]["consistency"]["success_rate"], "expected": expected}
@@ -23,6 +24,8 @@ def _assess_ammeter(record: Dict, expected: Optional[float], confidence: float) 
 
     # Confidence interval of the mean from the t distribution (valid for small samples)
     margin = t_ppf((1 + confidence) / 2, n - 1) * std / math.sqrt(n)
+
+    # Store the precision figures
     result.update({
         "mean": mean,
         "cv": std / mean if mean else None,
@@ -39,6 +42,13 @@ def _assess_ammeter(record: Dict, expected: Optional[float], confidence: float) 
     return result
 
 
+def _spread(assessment: Dict) -> float:
+    """
+    Returns the ammeter's coefficient of variation, or infinity when it has none so it ranks last.
+    """
+    return math.inf if assessment.get("cv") is None else assessment["cv"]
+
+
 def assess(records: List[Dict], expected: Dict[str, float], confidence: float = 0.95) -> Dict:
     """
     Compares the ammeters of one run. Ranks them by reliability (highest success rate first, then lowest coefficient of variation)
@@ -52,10 +62,3 @@ def assess(records: List[Dict], expected: Dict[str, float], confidence: float = 
     most_reliable = ranking[0] if ranking and ammeters[ranking[0]].get("cv") is not None else None
 
     return {"confidence": confidence, "ammeters": ammeters, "ranking": ranking, "most_reliable": most_reliable}
-
-
-def _spread(assessment: Dict) -> float:
-    """
-    Returns the ammeter's coefficient of variation, or infinity when it has none so it ranks last.
-    """
-    return math.inf if assessment.get("cv") is None else assessment["cv"]

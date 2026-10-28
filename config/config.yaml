@@ -14,9 +14,9 @@ ammeters:
   entes:
     port: 5002
     command: "MEASURE_ENTES -get_data"
-    error_rate: 0.6      # 40% of reads fail
+    error_rate: 0        # fraction of reads that fail on purpose (0.6 = 60%); 0 turns the simulation off
     error_seed: 1        # optional, makes the failures repeatable
-    
+
   circutor:
     port: 5003
     command: "MEASURE_CIRCUTOR -get_measurement"

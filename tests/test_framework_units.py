@@ -11,6 +11,16 @@ from src.testing.result_store import ResultStore, ResultStoreError, new_run_id
 from src.testing.visualizer import plot_comparison, plot_measurements
 from src.testing.sampler import SamplingConfig, SamplingConfigError, sample
 from src.utils.tdist import t_cdf, t_ppf
+
+# (degrees of freedom, probability, t value) computed with scipy
+T_REFERENCES = [
+    (1, 0.975, 12.706204736432095),
+    (2, 0.975, 4.302652729696142),
+    (19, 0.975, 2.093024054408263),
+    (10, 0.995, 3.16927267261695),
+    (1000, 0.975, 1.9623390808264074),
+    (4, 0.9, 1.5332062740589432),
+]
 from src.testing.test_framework import AmmeterTestFramework
 from src.utils.config import ConfigError, load_config
 from src.utils.errors import FrameworkError
@@ -195,8 +205,7 @@ class TDistributionTest(unittest.TestCase):
         """
         Quantiles agree with reference values (computed with scipy) to 8 digits.
         """
-        references = [(1, 0.975, 12.706204736432095), (2, 0.975, 4.302652729696142), (19, 0.975, 2.093024054408263), (10, 0.995, 3.16927267261695), (1000, 0.975, 1.9623390808264074), (4, 0.9, 1.5332062740589432)]
-        for df, probability, expected in references:
+        for df, probability, expected in T_REFERENCES:
             self.assertAlmostEqual(t_ppf(probability, df), expected, places=8)
 
     def test_should_be_symmetric_and_invert_the_cdf(self):

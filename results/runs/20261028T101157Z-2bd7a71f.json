@@ -1,0 +1,834 @@
+{
+  "run_id": "20261028T101157Z-2bd7a71f",
+  "metadata": {
+    "created_at": "2026-10-28T10:11:57.194197+00:00",
+    "label": "sample run",
+    "python_version": "3.9.6",
+    "platform": "macOS-27.0.1-arm64-arm-64bit",
+    "config": {
+      "testing": {
+        "sampling": {
+          "measurements_count": 20,
+          "total_duration_seconds": null,
+          "sampling_frequency_hz": 10
+        }
+      },
+      "ammeters": {
+        "greenlee": {
+          "port": 5001,
+          "command": "MEASURE_GREENLEE -get_measurement"
+        },
+        "entes": {
+          "port": 5002,
+          "command": "MEASURE_ENTES -get_data",
+          "error_rate": 0,
+          "error_seed": 1
+        },
+        "circutor": {
+          "port": 5003,
+          "command": "MEASURE_CIRCUTOR -get_measurement"
+        }
+      },
+      "analysis": {
+        "statistical_metrics": [
+          "mean",
+          "median",
+          "std_dev",
+          "min",
+          "max"
+        ],
+        "visualization": {
+          "enabled": true,
+          "plot_types": [
+            "time_series",
+            "histogram",
+            "rolling_stats"
+          ],
+          "comparison_plots": [
+            "normalized_boxplot",
+            "bias"
+          ],
+          "output_dir": "results/plots"
+        },
+        "accuracy": {
+          "confidence_level": 0.95,
+          "expected_current_a": {
+            "greenlee": 0.3803,
+            "entes": 68.75,
+            "circutor": 0.03025
+          }
+        }
+      },
+      "result_management": {
+        "directory": "results/runs"
+      }
+    }
+  },
+  "ammeters": [
+    {
+      "ammeter": "greenlee",
+      "config": {
+        "measurements_count": 20,
+        "total_duration_seconds": null,
+        "sampling_frequency_hz": 10
+      },
+      "results": [
+        {
+          "ammeter": "greenlee",
+          "success": true,
+          "value": 0.2054705420899182,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:11:57.204666+00:00",
+          "duration_seconds": 0.0007549589999999995,
+          "error": null
+        },
+        {
+          "ammeter": "greenlee",
+          "success": true,
+          "value": 0.08630407331612366,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:11:57.305858+00:00",
+          "duration_seconds": 0.0010515829999999948,
+          "error": null
+        },
+        {
+          "ammeter": "greenlee",
+          "success": true,
+          "value": 0.10606081913402308,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:11:57.405900+00:00",
+          "duration_seconds": 0.0014803749999999782,
+          "error": null
+        },
+        {
+          "ammeter": "greenlee",
+          "success": true,
+          "value": 0.098130894237496,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:11:57.505337+00:00",
+          "duration_seconds": 0.0008478749999999979,
+          "error": null
+        },
+        {
+          "ammeter": "greenlee",
+          "success": true,
+          "value": 0.04559214581544859,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:11:57.605205+00:00",
+          "duration_seconds": 0.0013799170000000083,
+          "error": null
+        },
+        {
+          "ammeter": "greenlee",
+          "success": true,
+          "value": 0.0933829729752276,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:11:57.705309+00:00",
+          "duration_seconds": 0.0012059589999999787,
+          "error": null
+        },
+        {
+          "ammeter": "greenlee",
+          "success": true,
+          "value": 0.08677138487667475,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:11:57.805295+00:00",
+          "duration_seconds": 0.0011429579999999717,
+          "error": null
+        },
+        {
+          "ammeter": "greenlee",
+          "success": true,
+          "value": 0.05555119710994593,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:11:57.904671+00:00",
+          "duration_seconds": 0.0012536659999999866,
+          "error": null
+        },
+        {
+          "ammeter": "greenlee",
+          "success": true,
+          "value": 0.0970743662452589,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:11:58.005248+00:00",
+          "duration_seconds": 0.0014471249999999936,
+          "error": null
+        },
+        {
+          "ammeter": "greenlee",
+          "success": true,
+          "value": 0.5770589152934589,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:11:58.105230+00:00",
+          "duration_seconds": 0.0012651670000000115,
+          "error": null
+        },
+        {
+          "ammeter": "greenlee",
+          "success": true,
+          "value": 0.3384390666782005,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:11:58.205374+00:00",
+          "duration_seconds": 0.002848375000000125,
+          "error": null
+        },
+        {
+          "ammeter": "greenlee",
+          "success": true,
+          "value": 0.05648399911601923,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:11:58.305451+00:00",
+          "duration_seconds": 0.0011983749999999738,
+          "error": null
+        },
+        {
+          "ammeter": "greenlee",
+          "success": true,
+          "value": 0.09048976109296711,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:11:58.405342+00:00",
+          "duration_seconds": 0.002089542,
+          "error": null
+        },
+        {
+          "ammeter": "greenlee",
+          "success": true,
+          "value": 0.2334881596377357,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:11:58.505205+00:00",
+          "duration_seconds": 0.0015757499999999869,
+          "error": null
+        },
+        {
+          "ammeter": "greenlee",
+          "success": true,
+          "value": 0.07188935775413233,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:11:58.605246+00:00",
+          "duration_seconds": 0.00200545799999996,
+          "error": null
+        },
+        {
+          "ammeter": "greenlee",
+          "success": true,
+          "value": 0.048239864038946034,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:11:58.705205+00:00",
+          "duration_seconds": 0.0007213750000001351,
+          "error": null
+        },
+        {
+          "ammeter": "greenlee",
+          "success": true,
+          "value": 0.08583315199200083,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:11:58.805287+00:00",
+          "duration_seconds": 0.0012288330000000958,
+          "error": null
+        },
+        {
+          "ammeter": "greenlee",
+          "success": true,
+          "value": 0.12599068462921886,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:11:58.905310+00:00",
+          "duration_seconds": 0.0027684159999998847,
+          "error": null
+        },
+        {
+          "ammeter": "greenlee",
+          "success": true,
+          "value": 0.126527631802266,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:11:59.005314+00:00",
+          "duration_seconds": 0.002300082999999953,
+          "error": null
+        },
+        {
+          "ammeter": "greenlee",
+          "success": true,
+          "value": 0.05157012302526077,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:11:59.105342+00:00",
+          "duration_seconds": 0.002431583000000126,
+          "error": null
+        }
+      ],
+      "offsets_seconds": [
+        7.707999999995163e-06,
+        0.10120091699999999,
+        0.201213333,
+        0.3006755,
+        0.400537708,
+        0.500649708,
+        0.6006305,
+        0.70000425,
+        0.80057225,
+        0.900559042,
+        1.000693583,
+        1.1007855420000001,
+        1.200666208,
+        1.300529917,
+        1.400567375,
+        1.50052525,
+        1.600621083,
+        1.700637583,
+        1.800635875,
+        1.900663417
+      ],
+      "total_seconds": 1.903236375,
+      "analysis": {
+        "count": 20,
+        "valid": 20,
+        "failed": 0,
+        "metrics": {
+          "mean": 0.13401745554301614,
+          "median": 0.09193636703409735,
+          "std_dev": 0.1267005634363531,
+          "min": 0.04559214581544859,
+          "max": 0.5770589152934589
+        },
+        "consistency": {
+          "success_rate": 1.0,
+          "coefficient_of_variation": 0.9454034395966091,
+          "actual_frequency_hz": 9.996509550328236,
+          "timing_error_ms_mean": 0.6188374499999462,
+          "timing_error_ms_max": 1.2133329999999831
+        }
+      },
+      "plots": [
+        "results/plots/20261028T101157Z-2bd7a71f/greenlee_time_series.png",
+        "results/plots/20261028T101157Z-2bd7a71f/greenlee_histogram.png",
+        "results/plots/20261028T101157Z-2bd7a71f/greenlee_rolling_stats.png"
+      ]
+    },
+    {
+      "ammeter": "entes",
+      "config": {
+        "measurements_count": 20,
+        "total_duration_seconds": null,
+        "sampling_frequency_hz": 10
+      },
+      "results": [
+        {
+          "ammeter": "entes",
+          "success": true,
+          "value": 63.250853317631005,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:11:59.491567+00:00",
+          "duration_seconds": 0.0012254170000001174,
+          "error": null
+        },
+        {
+          "ammeter": "entes",
+          "success": true,
+          "value": 30.65984487784534,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:11:59.592206+00:00",
+          "duration_seconds": 0.00141491699999996,
+          "error": null
+        },
+        {
+          "ammeter": "entes",
+          "success": true,
+          "value": 74.2208339021938,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:11:59.692178+00:00",
+          "duration_seconds": 0.0011445000000001038,
+          "error": null
+        },
+        {
+          "ammeter": "entes",
+          "success": true,
+          "value": 33.766069874835296,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:11:59.792181+00:00",
+          "duration_seconds": 0.0013477079999999475,
+          "error": null
+        },
+        {
+          "ammeter": "entes",
+          "success": true,
+          "value": 78.54051174663115,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:11:59.892253+00:00",
+          "duration_seconds": 0.0017486250000002812,
+          "error": null
+        },
+        {
+          "ammeter": "entes",
+          "success": true,
+          "value": 181.19193650080737,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:11:59.991942+00:00",
+          "duration_seconds": 0.0026071249999999324,
+          "error": null
+        },
+        {
+          "ammeter": "entes",
+          "success": true,
+          "value": 18.900912383797653,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:12:00.092290+00:00",
+          "duration_seconds": 0.002137124999999962,
+          "error": null
+        },
+        {
+          "ammeter": "entes",
+          "success": true,
+          "value": 41.41087091387003,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:12:00.192278+00:00",
+          "duration_seconds": 0.0009230829999999912,
+          "error": null
+        },
+        {
+          "ammeter": "entes",
+          "success": true,
+          "value": 107.94676434420383,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:12:00.292230+00:00",
+          "duration_seconds": 0.001339417000000065,
+          "error": null
+        },
+        {
+          "ammeter": "entes",
+          "success": true,
+          "value": 59.58887996453177,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:12:00.391908+00:00",
+          "duration_seconds": 0.0012800410000002316,
+          "error": null
+        },
+        {
+          "ammeter": "entes",
+          "success": true,
+          "value": 102.9794495555636,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:12:00.492443+00:00",
+          "duration_seconds": 0.001151750000000007,
+          "error": null
+        },
+        {
+          "ammeter": "entes",
+          "success": true,
+          "value": 29.21062539029775,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:12:00.592446+00:00",
+          "duration_seconds": 0.0015727910000000733,
+          "error": null
+        },
+        {
+          "ammeter": "entes",
+          "success": true,
+          "value": 165.69316805489245,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:12:00.692178+00:00",
+          "duration_seconds": 0.0015423330000001734,
+          "error": null
+        },
+        {
+          "ammeter": "entes",
+          "success": true,
+          "value": 17.807220866817158,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:12:00.792216+00:00",
+          "duration_seconds": 0.001823583000000184,
+          "error": null
+        },
+        {
+          "ammeter": "entes",
+          "success": true,
+          "value": 41.50820362416381,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:12:00.891594+00:00",
+          "duration_seconds": 0.003040458000000079,
+          "error": null
+        },
+        {
+          "ammeter": "entes",
+          "success": true,
+          "value": 40.36488618759078,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:12:00.992772+00:00",
+          "duration_seconds": 0.0017521250000003263,
+          "error": null
+        },
+        {
+          "ammeter": "entes",
+          "success": true,
+          "value": 17.167211227574583,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:12:01.092221+00:00",
+          "duration_seconds": 0.0026477920000003152,
+          "error": null
+        },
+        {
+          "ammeter": "entes",
+          "success": true,
+          "value": 153.5667925835886,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:12:01.192184+00:00",
+          "duration_seconds": 0.0011990830000003783,
+          "error": null
+        },
+        {
+          "ammeter": "entes",
+          "success": true,
+          "value": 74.44664851131567,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:12:01.292227+00:00",
+          "duration_seconds": 0.002254499999999382,
+          "error": null
+        },
+        {
+          "ammeter": "entes",
+          "success": true,
+          "value": 31.661478707281837,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:12:01.392641+00:00",
+          "duration_seconds": 0.0016904590000006436,
+          "error": null
+        }
+      ],
+      "offsets_seconds": [
+        1.208000000030296e-06,
+        0.10063329199999993,
+        0.20060966700000016,
+        0.3006121249999998,
+        0.40065129200000005,
+        0.5003564169999999,
+        0.60070275,
+        0.7007014580000002,
+        0.8006414999999998,
+        0.9003339169999998,
+        1.000860292,
+        1.1008636250000001,
+        1.200606042,
+        1.30063475,
+        1.400006792,
+        1.5011945830000002,
+        1.600623083,
+        1.70060425,
+        1.8006390419999998,
+        1.901050375
+      ],
+      "total_seconds": 1.902838917,
+      "analysis": {
+        "count": 20,
+        "valid": 20,
+        "failed": 0,
+        "metrics": {
+          "mean": 68.19415812677167,
+          "median": 50.54854179434779,
+          "std_dev": 50.18865284138566,
+          "min": 17.167211227574583,
+          "max": 181.19193650080737
+        },
+        "consistency": {
+          "success_rate": 1.0,
+          "coefficient_of_variation": 0.7359670420461221,
+          "actual_frequency_hz": 9.994474765036145,
+          "timing_error_ms_mean": 0.6163229999999256,
+          "timing_error_ms_max": 1.1945830000001934
+        }
+      },
+      "plots": [
+        "results/plots/20261028T101157Z-2bd7a71f/entes_time_series.png",
+        "results/plots/20261028T101157Z-2bd7a71f/entes_histogram.png",
+        "results/plots/20261028T101157Z-2bd7a71f/entes_rolling_stats.png"
+      ]
+    },
+    {
+      "ammeter": "circutor",
+      "config": {
+        "measurements_count": 20,
+        "total_duration_seconds": null,
+        "sampling_frequency_hz": 10
+      },
+      "results": [
+        {
+          "ammeter": "circutor",
+          "success": true,
+          "value": 0.03238341766905861,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:12:01.539462+00:00",
+          "duration_seconds": 0.00120104199999993,
+          "error": null
+        },
+        {
+          "ammeter": "circutor",
+          "success": true,
+          "value": 0.02506072574521377,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:12:01.640086+00:00",
+          "duration_seconds": 0.0013817920000001038,
+          "error": null
+        },
+        {
+          "ammeter": "circutor",
+          "success": true,
+          "value": 0.048933670306656504,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:12:01.739467+00:00",
+          "duration_seconds": 0.0012882499999999908,
+          "error": null
+        },
+        {
+          "ammeter": "circutor",
+          "success": true,
+          "value": 0.033497593407866275,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:12:01.840341+00:00",
+          "duration_seconds": 0.0008797079999993684,
+          "error": null
+        },
+        {
+          "ammeter": "circutor",
+          "success": true,
+          "value": 0.026984101465863004,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:12:01.940264+00:00",
+          "duration_seconds": 0.0012665409999996768,
+          "error": null
+        },
+        {
+          "ammeter": "circutor",
+          "success": true,
+          "value": 0.053632055008827166,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:12:02.040469+00:00",
+          "duration_seconds": 0.0015229579999997966,
+          "error": null
+        },
+        {
+          "ammeter": "circutor",
+          "success": true,
+          "value": 0.0201193154868302,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:12:02.140090+00:00",
+          "duration_seconds": 0.0015900829999999644,
+          "error": null
+        },
+        {
+          "ammeter": "circutor",
+          "success": true,
+          "value": 0.04705347476440945,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:12:02.240075+00:00",
+          "duration_seconds": 0.00157762500000036,
+          "error": null
+        },
+        {
+          "ammeter": "circutor",
+          "success": true,
+          "value": 0.018724157149341936,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:12:02.340129+00:00",
+          "duration_seconds": 0.003436791000000383,
+          "error": null
+        },
+        {
+          "ammeter": "circutor",
+          "success": true,
+          "value": 0.022601721478873026,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:12:02.440627+00:00",
+          "duration_seconds": 0.0009262919999999397,
+          "error": null
+        },
+        {
+          "ammeter": "circutor",
+          "success": true,
+          "value": 0.02200256593966,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:12:02.540167+00:00",
+          "duration_seconds": 0.0013387919999994224,
+          "error": null
+        },
+        {
+          "ammeter": "circutor",
+          "success": true,
+          "value": 0.0589157713638744,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:12:02.640373+00:00",
+          "duration_seconds": 0.001441958000000021,
+          "error": null
+        },
+        {
+          "ammeter": "circutor",
+          "success": true,
+          "value": 0.01191441857148894,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:12:02.739481+00:00",
+          "duration_seconds": 0.0014529999999997045,
+          "error": null
+        },
+        {
+          "ammeter": "circutor",
+          "success": true,
+          "value": 0.02853059950151907,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:12:02.839489+00:00",
+          "duration_seconds": 0.0028967500000005586,
+          "error": null
+        },
+        {
+          "ammeter": "circutor",
+          "success": true,
+          "value": 0.04555106015105526,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:12:02.940156+00:00",
+          "duration_seconds": 0.0027598750000006333,
+          "error": null
+        },
+        {
+          "ammeter": "circutor",
+          "success": true,
+          "value": 0.020650164762121552,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:12:03.040526+00:00",
+          "duration_seconds": 0.0022463750000003557,
+          "error": null
+        },
+        {
+          "ammeter": "circutor",
+          "success": true,
+          "value": 0.04068089099511637,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:12:03.139482+00:00",
+          "duration_seconds": 0.0018773749999994038,
+          "error": null
+        },
+        {
+          "ammeter": "circutor",
+          "success": true,
+          "value": 0.033710172155658275,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:12:03.240158+00:00",
+          "duration_seconds": 0.0027050000000006236,
+          "error": null
+        },
+        {
+          "ammeter": "circutor",
+          "success": true,
+          "value": 0.04668719046175821,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:12:03.339492+00:00",
+          "duration_seconds": 0.0030894999999997452,
+          "error": null
+        },
+        {
+          "ammeter": "circutor",
+          "success": true,
+          "value": 0.03206927944394484,
+          "unit": "A",
+          "timestamp": "2026-10-28T10:12:03.440519+00:00",
+          "duration_seconds": 0.001986084000000332,
+          "error": null
+        }
+      ],
+      "offsets_seconds": [
+        1.4999999997655777e-06,
+        0.10062204199999947,
+        0.2000026669999997,
+        0.300875209,
+        0.4007918339999996,
+        0.5009975840000003,
+        0.6006162919999998,
+        0.7006073339999999,
+        0.800642667,
+        0.9011564999999999,
+        1.0006941249999999,
+        1.1009047919999997,
+        1.2000067090000002,
+        1.3000067499999997,
+        1.4006704999999995,
+        1.5010397920000003,
+        1.6000048749999998,
+        1.7006630839999994,
+        1.8000070419999998,
+        1.901035834
+      ],
+      "total_seconds": 1.9031003339999994,
+      "analysis": {
+        "count": 20,
+        "valid": 20,
+        "failed": 0,
+        "metrics": {
+          "mean": 0.033485117291456847,
+          "median": 0.03222634855650172,
+          "std_dev": 0.01310874590590182,
+          "min": 0.01191441857148894,
+          "max": 0.0589157713638744
+        },
+        "consistency": {
+          "success_rate": 1.0,
+          "coefficient_of_variation": 0.3914797667215068,
+          "actual_frequency_hz": 9.994551212652206,
+          "timing_error_ms_mean": 0.5673565999997645,
+          "timing_error_ms_max": 1.1564999999998937
+        }
+      },
+      "plots": [
+        "results/plots/20261028T101157Z-2bd7a71f/circutor_time_series.png",
+        "results/plots/20261028T101157Z-2bd7a71f/circutor_histogram.png",
+        "results/plots/20261028T101157Z-2bd7a71f/circutor_rolling_stats.png"
+      ]
+    }
+  ],
+  "accuracy": {
+    "confidence": 0.95,
+    "ammeters": {
+      "greenlee": {
+        "valid": 20,
+        "success_rate": 1.0,
+        "expected": 0.3803,
+        "mean": 0.13401745554301614,
+        "cv": 0.9454034395966091,
+        "robust_cv": 0.7185193233593524,
+        "ci_low": 0.07471976655328172,
+        "ci_high": 0.19331514453275056,
+        "ci_width_pct": 0.8849248592203185,
+        "bias_pct": -0.6476006953904387,
+        "expected_in_ci": false
+      },
+      "entes": {
+        "valid": 20,
+        "success_rate": 1.0,
+        "expected": 68.75,
+        "mean": 68.19415812677167,
+        "cv": 0.7359670420461221,
+        "robust_cv": 1.3048736803620604,
+        "ci_low": 44.70514555819504,
+        "ci_high": 91.6831706953483,
+        "ci_width_pct": 0.6888863566556827,
+        "bias_pct": -0.008084972701503003,
+        "expected_in_ci": true
+      },
+      "circutor": {
+        "valid": 20,
+        "success_rate": 1.0,
+        "expected": 0.03025,
+        "mean": 0.033485117291456847,
+        "cv": 0.3914797667215068,
+        "robust_cv": 0.7525147634117106,
+        "ci_low": 0.027350035357396628,
+        "ci_high": 0.039620199225517065,
+        "ci_width_pct": 0.36643634129515085,
+        "bias_pct": 0.10694602616386273,
+        "expected_in_ci": true
+      }
+    },
+    "ranking": [
+      "circutor",
+      "entes",
+      "greenlee"
+    ],
+    "most_reliable": "circutor"
+  },
+  "comparison_plots": [
+    "results/plots/20261028T101157Z-2bd7a71f/comparison_normalized_boxplot.png",
+    "results/plots/20261028T101157Z-2bd7a71f/comparison_bias.png"
+  ]
+}
