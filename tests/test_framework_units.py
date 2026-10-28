@@ -1,10 +1,12 @@
 import math
+import socket
 import tempfile
+import threading
 import unittest
 from unittest import mock
 
 from src.testing.accuracy import assess
-from src.testing.ammeter_api import AmmeterConfigError, AmmeterInterface, FaultInjectingAmmeter, create_ammeters
+from src.testing.ammeter_api import AmmeterConfigError, AmmeterInterface, FaultInjectingAmmeter, SocketAmmeter, create_ammeters
 from src.testing.analyzer import analyze, build_record
 from src.testing.report import format_comparison, format_report
 from src.testing.result_store import ResultStore, ResultStoreError, new_run_id
@@ -94,6 +96,73 @@ class MeasureTest(unittest.TestCase):
             self.assertFalse(result.success, reply)
             self.assertIsNone(result.value)
             self.assertTrue(result.error)
+
+
+class SocketFailureTest(unittest.TestCase):
+    """
+    Real socket failures against a throwaway local server.
+    """
+
+    def serve_once(self, handler):
+        """
+        Starts a one-connection TCP server on a free port that runs handler(connection) and returns the port.
+        """
+        server = socket.socket()
+        server.bind(("127.0.0.1", 0))
+        server.listen(1)
+        self.addCleanup(server.close)
+
+        def run():
+            """
+            Accepts one connection and hands it to the handler.
+            """
+            connection, _ = server.accept()
+            with connection:
+                handler(connection)
+
+        threading.Thread(target=run, daemon=True).start()
+
+        return server.getsockname()[1]
+
+    def test_should_report_failure_given_closed_port(self):
+        """
+        Nothing listening on the port gives a failed result, not an exception.
+        """
+        probe = socket.socket()
+        probe.bind(("127.0.0.1", 0))
+        port = probe.getsockname()[1]
+        probe.close()
+        result = SocketAmmeter("a", port, b"CMD", timeout_seconds=0.5).measure()
+        self.assertFalse(result.success)
+        self.assertIn("Error", result.error)
+
+    def test_should_report_failure_given_server_closes_without_reply(self):
+        """
+        A server that hangs up (what the emulators do on a wrong command) gives a failed result.
+        """
+        port = self.serve_once(lambda connection: connection.recv(1024))
+        result = SocketAmmeter("a", port, b"CMD", timeout_seconds=0.5).measure()
+        self.assertFalse(result.success)
+
+    def test_should_report_failure_given_server_never_answers(self):
+        """
+        A server that keeps the connection open without replying times out.
+        """
+        release = threading.Event()
+        self.addCleanup(release.set)
+        port = self.serve_once(lambda connection: release.wait(2))
+        result = SocketAmmeter("a", port, b"CMD", timeout_seconds=0.2).measure()
+        self.assertFalse(result.success)
+        self.assertIn("imeout", result.error)
+
+    def test_should_return_value_given_working_server(self):
+        """
+        A server that replies with a number gives a successful result.
+        """
+        port = self.serve_once(lambda connection: (connection.recv(1024), connection.sendall(b"2.5")))
+        result = SocketAmmeter("a", port, b"CMD", timeout_seconds=0.5).measure()
+        self.assertTrue(result.success)
+        self.assertEqual(result.value, 2.5)
 
 
 class ConfigTest(unittest.TestCase):

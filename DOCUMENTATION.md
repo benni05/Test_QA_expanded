@@ -64,6 +64,6 @@ I checked the interval, spread and bias against scipy and numpy on known data, a
 
 - With 20 samples the ranking can change between runs, and Greenlee's readings (V/R) are heavy-tailed, so its mean and interval are unstable; use more measurements for a steadier verdict.
 - Tested on macOS only; the Windows handling of `SO_REUSEADDR` is by design, not tested.
-- Unit tests use a fake ammeter; the real emulators are exercised by `main.py`.
+- Unit tests use a fake ammeter plus a throwaway local TCP server for real socket failures (closed port, hang-up, no answer); the real emulators are exercised by `main.py`.
 
 More detail (per-module notes, measured figures) is in `docs/DETAILED_NOTES.md`.
