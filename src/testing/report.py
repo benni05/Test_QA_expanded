@@ -1,3 +1,4 @@
+from collections import Counter
 from typing import Dict, List, Optional
 
 LABELS = {"mean": "Mean (A)", "median": "Median (A)", "std_dev": "Std dev (A)", "min": "Min (A)", "max": "Max (A)"}
@@ -46,6 +47,10 @@ def _header_lines(run: Dict) -> List[str]:
     if metadata["label"]:
         lines.append(f"Label: {metadata['label']}")
     lines.append("")
+
+    # Per-ammeter overrides make the settings differ, so only shared settings are printed
+    if any(r["config"] != settings for r in run["ammeters"]):
+        return lines + ["Sampling: set per ammeter (see the archived config)", ""]
 
     # One line per sampling setting that is in use
     for key, text in (("measurements_count", "Sampling measurements: {}"), ("sampling_frequency_hz", "Sampling frequency: {} Hz"), ("total_duration_seconds", "Total duration: {} s")):
@@ -96,6 +101,20 @@ def _warning_lines(records: List[Dict]) -> List[str]:
     return lines + [""] if lines else []
 
 
+def _error_lines(records: List[Dict]) -> List[str]:
+    """
+    Returns the failed measurements of each ammeter grouped by error message, most frequent first; empty when nothing failed.
+    """
+    lines = []
+    for record in records:
+        failures = Counter(r["error"] for r in record["results"] if r["error"])
+        if failures:
+            lines.append(f"  {record['ammeter']}: {sum(failures.values())} of {record['analysis']['count']} failed")
+            lines += [f"    {count}x {error}" for error, count in failures.most_common()]
+
+    return ["ERRORS"] + lines + [""] if lines else []
+
+
 def _accuracy_lines(accuracy: Dict) -> List[str]:
     """
     Returns the report lines comparing the ammeters: a reliability ranking with precision figures, bias against the expected current, and the verdict.
@@ -129,7 +148,7 @@ def format_report(run: Dict) -> str:
     Returns a readable summary of an archived run: its identity, statistics, consistency, accuracy comparison and plot files.
     """
     records = run["ammeters"]
-    lines = _header_lines(run) + _warning_lines(records) + _statistics_lines(records) + _consistency_lines(records)
+    lines = _header_lines(run) + _warning_lines(records) + _statistics_lines(records) + _consistency_lines(records) + _error_lines(records)
 
     # Accuracy and precision comparison, if the run has one
     if "accuracy" in run:
@@ -137,6 +156,8 @@ def format_report(run: Dict) -> str:
 
     # Plot files
     plots = [f"  {r['ammeter']}: {', '.join(r['plots'])}" for r in records if r["plots"]]
+    if run.get("comparison_plots"):
+        plots.append(f"  comparison: {', '.join(run['comparison_plots'])}")
     if plots:
         lines += ["", "PLOTS"] + plots
 

@@ -8,7 +8,7 @@ from .ammeter_api import AmmeterInterface, MeasurementResult, create_ammeters
 from .analyzer import METRICS, build_record
 from .result_store import ResultStore, new_run_id
 from .sampler import SamplingConfig, SamplingConfigError, sample
-from .visualizer import PLOTS, plot_measurements
+from .visualizer import COMPARISON_PLOTS, PLOTS, plot_comparison, plot_measurements
 from ..utils.config import load_config
 from ..utils.errors import require_known
 
@@ -28,12 +28,24 @@ class AmmeterTestFramework:
         # Validate the settings that would otherwise fail late
         require_known(analysis["statistical_metrics"], METRICS, "metrics")
         require_known(analysis["visualization"]["plot_types"], PLOTS, "plot types")
-        try:
-            self.sampling = SamplingConfig(**self.config["testing"]["sampling"])
-        except TypeError as exc:
-            raise SamplingConfigError(f"invalid testing.sampling settings: {exc}") from exc
+        require_known(analysis["visualization"].get("comparison_plots", []), COMPARISON_PLOTS, "comparison plot types")
+        self.sampling = self._sampling_config(self.config["testing"]["sampling"], "testing.sampling")
         self.ammeters: Dict[str, AmmeterInterface] = create_ammeters(self.config)
         self.store = ResultStore(self.config["result_management"]["directory"])
+
+        # Per-ammeter sampling overrides replace the shared settings entirely
+        self.sampling_overrides = {name: self._sampling_config(self.config["ammeters"][name]["sampling"], f"ammeters.{name}.sampling")
+                                   for name in self.ammeters if self.config["ammeters"][name].get("sampling")}
+
+    @staticmethod
+    def _sampling_config(settings: Dict, where: str) -> SamplingConfig:
+        """
+        Builds a SamplingConfig from a config section, turning unknown keys into a SamplingConfigError that names the section.
+        """
+        try:
+            return SamplingConfig(**settings)
+        except TypeError as exc:
+            raise SamplingConfigError(f"invalid {where} settings: {exc}") from exc
 
     def get_ammeter(self, ammeter_type: str) -> AmmeterInterface:
         """
@@ -66,7 +78,7 @@ class AmmeterTestFramework:
         visualization = analysis["visualization"]
 
         # Sample and analyze
-        run = sample(self.get_ammeter(ammeter_type), sampling or self.sampling)
+        run = sample(self.get_ammeter(ammeter_type), sampling or self.sampling_overrides.get(ammeter_type.lower(), self.sampling))
         record = build_record(run, analysis["statistical_metrics"])
 
         # Plot if enabled
@@ -98,6 +110,11 @@ class AmmeterTestFramework:
         # Compare the ammeters with each other
         accuracy = self.config["analysis"]["accuracy"]
         run["accuracy"] = assess(run["ammeters"], accuracy["expected_current_a"], accuracy["confidence_level"])
+
+        # Plot the ammeters against each other, if enabled
+        visualization = self.config["analysis"]["visualization"]
+        if visualization["enabled"]:
+            run["comparison_plots"] = plot_comparison(run["ammeters"], run["accuracy"], visualization.get("comparison_plots", []), plots_dir)
 
         # Archive the run
         self.store.save(run)

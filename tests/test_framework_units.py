@@ -8,7 +8,9 @@ from src.testing.ammeter_api import AmmeterConfigError, AmmeterInterface, FaultI
 from src.testing.analyzer import analyze, build_record
 from src.testing.report import format_comparison, format_report
 from src.testing.result_store import ResultStore, ResultStoreError, new_run_id
+from src.testing.visualizer import plot_comparison, plot_measurements
 from src.testing.sampler import SamplingConfig, SamplingConfigError, sample
+from src.utils.tdist import t_cdf, t_ppf
 from src.testing.test_framework import AmmeterTestFramework
 from src.utils.config import ConfigError, load_config
 from src.utils.errors import FrameworkError
@@ -184,6 +186,37 @@ class AnalysisTest(unittest.TestCase):
         self.assertTrue(math.isfinite(result["ammeters"]["noisy"]["ci_width_pct"]))
 
 
+class TDistributionTest(unittest.TestCase):
+    """
+    Student's t quantiles used for the confidence interval.
+    """
+
+    def test_should_match_reference_quantiles(self):
+        """
+        Quantiles agree with reference values (computed with scipy) to 8 digits.
+        """
+        references = [(1, 0.975, 12.706204736432095), (2, 0.975, 4.302652729696142), (19, 0.975, 2.093024054408263), (10, 0.995, 3.16927267261695), (1000, 0.975, 1.9623390808264074), (4, 0.9, 1.5332062740589432)]
+        for df, probability, expected in references:
+            self.assertAlmostEqual(t_ppf(probability, df), expected, places=8)
+
+    def test_should_be_symmetric_and_invert_the_cdf(self):
+        """
+        The median is 0, the lower tail mirrors the upper one, and t_cdf undoes t_ppf.
+        """
+        self.assertEqual(t_ppf(0.5, 7), 0.0)
+        self.assertAlmostEqual(t_ppf(0.025, 19), -t_ppf(0.975, 19), places=10)
+        self.assertAlmostEqual(t_cdf(t_ppf(0.9, 6), 6), 0.9, places=10)
+
+    def test_should_reject_invalid_input(self):
+        """
+        A probability outside (0, 1) or a non-positive df raises.
+        """
+        with self.assertRaises(ValueError):
+            t_ppf(1.0, 5)
+        with self.assertRaises(ValueError):
+            t_ppf(0.9, 0)
+
+
 class ResultStoreTest(unittest.TestCase):
     """
     Archiving and retrieval.
@@ -220,6 +253,14 @@ class ReportTest(unittest.TestCase):
         self.assertIn("Mean (A)", report)
         self.assertIn("WARNING: no valid samples from dead", report)
         self.assertIn("Most reliable: ok", report)
+
+    def test_should_list_errors_by_kind(self):
+        """
+        Failed measurements are listed per ammeter with a count for each error message.
+        """
+        report = format_report(archived_run(run_of("flaky", ["1", ConnectionResetError("reset"), ConnectionResetError("reset"), "2"])))
+        self.assertIn("flaky: 2 of 4 failed", report)
+        self.assertIn("2x ConnectionResetError: reset", report)
 
     def test_should_compare_runs(self):
         """
@@ -278,6 +319,37 @@ class FrameworkValidationTest(unittest.TestCase):
             with mock.patch("src.testing.test_framework.load_config", return_value=broken):
                 with self.assertRaises(FrameworkError, msg=path):
                     AmmeterTestFramework()
+
+
+class ConfigDrivenTest(unittest.TestCase):
+    """
+    Per-ammeter settings and the advanced plots.
+    """
+
+    def test_should_apply_per_ammeter_settings(self):
+        """
+        An ammeter can be disabled or given its own sampling settings.
+        """
+        config = load_config("config/config.yaml")
+        config["ammeters"]["entes"]["enabled"] = False
+        config["ammeters"]["circutor"]["sampling"] = {"measurements_count": 4, "sampling_frequency_hz": 100}
+        with mock.patch("src.testing.test_framework.load_config", return_value=config):
+            framework = AmmeterTestFramework()
+        self.assertEqual(sorted(framework.ammeters), ["circutor", "greenlee"])
+        self.assertEqual(framework.sampling_overrides["circutor"].measurements_count, 4)
+        self.assertNotIn("greenlee", framework.sampling_overrides)
+
+    def test_should_draw_every_plot_type(self):
+        """
+        Per-ammeter and comparison plots are written as PNG files.
+        """
+        records = [run_of("a", ["1", "2", "3", "2", "1", "2"]), run_of("b", ["10", "11", "9", "10", "10", "12"])]
+        accuracy = assess(records, {"a": 2.0})
+        with tempfile.TemporaryDirectory() as directory:
+            run = sample(FakeAmmeter("a", ["1", "2", "3", "2", "1", "2"]), fast_config(6))
+            self.assertEqual(len(plot_measurements(run, ["time_series", "histogram", "rolling_stats"], directory)), 3)
+            self.assertEqual(len(plot_comparison(records, accuracy, ["normalized_boxplot", "bias"], directory)), 2)
+            self.assertEqual(plot_comparison(records, accuracy, [], directory), [])
 
 
 if __name__ == "__main__":

@@ -211,11 +211,15 @@ def create_ammeter(name: str, settings: Optional[Dict]) -> AmmeterInterface:
 
 def create_ammeters(config: Dict) -> Dict[str, AmmeterInterface]:
     """
-    Builds every ammeter listed under "ammeters" in the config, keyed by lower-case name.
+    Builds every ammeter listed under "ammeters" in the config unless it has enabled: false, keyed by lower-case name.
     """
     # Validate the section
     section = (config or {}).get("ammeters")
     if not section:
         raise AmmeterConfigError("config has no 'ammeters' section")
 
-    return {name.lower(): create_ammeter(name.lower(), settings) for name, settings in section.items()}
+    ammeters = {name.lower(): create_ammeter(name.lower(), settings) for name, settings in section.items() if (settings or {}).get("enabled", True)}
+    if not ammeters:
+        raise AmmeterConfigError("no ammeter is enabled in the config")
+
+    return ammeters

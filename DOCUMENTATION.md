@@ -1,131 +1,69 @@
-# Ammeter Testing Exercise - Documentation
+# Ammeter Testing Framework - Design Documentation
 
-## Environment
+## Overview
 
-- Python 3.9.6 (macOS system `python3`), run inside a virtual environment at `.venv/`.
-- Setup:
+The framework tests three ammeter emulators (Greenlee, ENTES, CIRCUTOR) over TCP: it samples each one on a fixed schedule, analyzes and plots the readings, compares the ammeters with each other, and archives every run so runs can be reviewed and compared later. Everything is driven by `config/config.yaml`.
 
-```sh
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+```
+config.yaml
+  -> AmmeterTestFramework     (builds and validates everything from the config)
+       -> ammeter_api         one interface for every ammeter
+       -> sampler             fixed-schedule measurements
+       -> analyzer, visualizer   statistics and plots per ammeter
+       -> accuracy            compares the ammeters with each other
+       -> result_store        archives the run as JSON
+       -> report              prints it
 ```
 
-- Run the emulators, take one measurement from each, then run the configured sampling test and analysis on each, and archive the run (plots go to `results/plots/<run_id>/`): `.venv/bin/python main.py [label]`
-- Browse archived runs: `.venv/bin/python history.py list`, `history.py show <run_id|latest>`, `history.py compare <run_id> <run_id> ...`
+**Run it:** `.venv/bin/python main.py [label]` tests everything and prints the report. `history.py list | show <id|latest> | compare <id> <id>` reviews archived runs. `python -m pytest tests` runs the tests (no emulators needed). Details are in the README.
 
-## Libraries installed
+**Libraries installed:** matplotlib 3.9.4 (plots) and PyYAML 6.0.3 (config). numpy came in as matplotlib's dependency. scipy, numpy, seaborn and pandas were installed at first, then removed from `requirements.txt` because nothing uses them. scipy was only needed for the t-distribution value in the confidence interval, which is now computed in pure Python (`src/utils/tdist.py`).
 
-Installed from `requirements.txt`:
+## Fixes to the supplied code
 
-| Package | Version |
-| --- | --- |
-| scipy | 1.13.1 |
-| matplotlib | 3.9.4 |
-| PyYAML | 6.0.3 |
-
-numpy was installed automatically as a dependency of scipy and matplotlib. numpy, seaborn and pandas were removed from `requirements.txt` because nothing imports them.
-
-## Bugs found and fixed
-
-### 1. `main.py` returned no data
-
-- **Symptom:** running `main.py` started the servers and exited without printing any measurement.
-- **Cause:** the three `request_current_from_ammeter(...)` calls were commented out, and the commands in them were truncated (`b'MEASURE_GREENLEE'`, `b'MEASURE_ENTES'`, `b'MEASURE_CIRCUTOR'`). The server only replies when the received bytes equal its full command exactly. On a mismatch it sends nothing and closes the connection, so the client prints "No data received."
-- **Fix:** uncommented the calls and used the full commands:
-
-| Ammeter | Port | Command |
+| Problem | Cause | Fix |
 | --- | --- | --- |
-| Greenlee | 5001 | `MEASURE_GREENLEE -get_measurement` |
-| ENTES | 5002 | `MEASURE_ENTES -get_data` |
-| CIRCUTOR | 5003 | `MEASURE_CIRCUTOR -get_measurement` |
+| `main.py` printed no data | The client calls were commented out and the commands truncated. The server answers only when it receives its full command. | Re-enabled the calls with the full commands (ports and commands now come from config). |
+| "Address already in use" on a quick restart | Closed connections stay in TCP `TIME_WAIT` and the servers did not set `SO_REUSEADDR`. | Set it in `AmmeterEmulatorBase` before `bind()`, except on Windows, where it would allow two processes to share a live port and is not needed. |
+| CIRCUTOR command differed from the README | The emulator required an undocumented `-current` suffix. | Removed the suffix so it matches the README and config. |
+| `test_framework.py` crashed on import | `Dict` was used without being imported, and `run_test` was an empty stub. | Rewrote it on top of the new API. |
 
-- **File:** `main.py`. It now takes the readings through the unified API (`AmmeterTestFramework().measure_all()`).
-
-### 2. "Address already in use" when restarting
-
-- **Symptom:** running `main.py` a second time shortly after the first raised `OSError: [Errno 48] Address already in use` in all three server threads, followed by `ConnectionRefusedError` in the client.
-- **Cause:** the connections from the previous run left the ports in TCP `TIME_WAIT`, and the server sockets did not set `SO_REUSEADDR`, so `bind()` was refused.
-- **Fix:** set `SO_REUSEADDR` before `bind()` in `AmmeterEmulatorBase.start_server`. The option is applied only when `sys.platform != "win32"`: on Windows it allows several processes to bind the same live port, and Windows does not block binding to `TIME_WAIT` ports, so it is not needed there.
-- **File:** `Ammeters/base_ammeter.py`.
-- **Verified:** three consecutive runs each returned a reading from all three ammeters (on macOS; Windows was not tested).
-
-### 3. CIRCUTOR command differed from the README
-
-- **Symptom:** the emulator required `MEASURE_CIRCUTOR -get_measurement -current`, while the README and the commented config give `MEASURE_CIRCUTOR -get_measurement`.
-- **Cause:** an undocumented `-current` suffix in the emulator.
-- **Fix:** removed the suffix from the emulator so the command matches the README, the config, and Greenlee's `-get_measurement` pattern. The client call in `main.py` was updated to match.
-- **Files:** `Ammeters/Circutor_Ammeter.py`, `main.py`.
-
-### 4. `test_framework.py` crashed on import
-
-- **Symptom:** importing `src/testing/test_framework.py` raised `NameError: name 'Dict' is not defined`.
-- **Cause:** `Dict` was used in an annotation without being imported from `typing`; `run_test` was also an empty stub.
-- **Fix:** rewrote the module on top of the new measurement API (see Design decisions). `run_test` raises `NotImplementedError` until sampling is implemented.
-- **File:** `src/testing/test_framework.py`.
-
-## Known inconsistencies (not yet addressed)
-
-- The README lists ports 5000, 5001 and 5002; the code uses 5001, 5002 and 5003. The code is internally consistent.
-- ENTES uses `-get_data` while the others use `-get_measurement`. This matches the README, so it is treated as intentional; the framework should read each command from configuration instead of assuming a shared one.
-- The README mentions `AmmeterTester.py`, `Ammeters/main.py` and `examples/run_test.py`; the actual files are `src/testing/test_framework.py`, `main.py` and `examples/run_tests.py`.
-- `src/utils/logger.py` never attaches a handler, so nothing is logged.
-- `Ammeters/client.py` is no longer used by `main.py`; it is left as supplied.
+Also: the README listed ports 5000-5002 while the code uses 5001-5003, so the README was rewritten to match. The dead `src/utils/logger.py` was deleted, and `Ammeters/client.py` is left as supplied (`main.py` no longer uses it).
 
 ## Design decisions
 
-### 1. Unified Measurement API (`src/testing/ammeter_api.py`)
+**1. One interface for every ammeter.** `AmmeterInterface.measure()` handles timing, parsing and error reporting; a subclass implements only `_read_raw()`. Every call returns the same `MeasurementResult` (value, success, unit, timestamp, duration, error) and *never raises*. *Why:* failures are data. A dead ammeter must not stop a sampling run, and a new ammeter type or transport is one small class.
 
-- **One result format.** `MeasurementResult` (ammeter, success, value, unit, UTC timestamp, duration, error) is returned for every ammeter, for successes and failures alike.
-- **`measure()` never raises.** Connection errors, timeouts, empty replies, non-numeric replies and NaN/infinity are all reported through the result (`success=False` plus an error message), so a sampling loop can record a failure and keep going.
-- **Template method.** `AmmeterInterface.measure()` handles timing, parsing and error reporting; a subclass only implements `_read_raw()`. A new ammeter type or a transport other than TCP needs one small class.
-- **Configuration-driven.** Ports and commands come from `config/config.yaml`, so differences between ammeters (for example ENTES's `-get_data`) live in config rather than code. `host` and `timeout_seconds` are optional per ammeter. Invalid config raises `AmmeterConfigError` with a clear message.
-- **Robust socket read.** The client reads until the server closes the connection (capped at 4096 bytes) instead of assuming one `recv` returns the whole reply.
-- **Framework entry point.** `AmmeterTestFramework` provides `measure(type)`, `measure_all()` and `get_ammeter(type)`. Type names are case-insensitive and an unknown type lists the valid ones.
+**2. Configuration over code.** Ports, commands, sampling, metrics, plots and expected currents live in `config.yaml`; per-ammeter `enabled`, `sampling` and `error_rate` override the defaults. The config is validated when the framework is built, so a typo fails immediately with the list of valid names, not after a minute of sampling. *Why:* ENTES uses a different command than the others, and anything that differs belongs in data, not branches.
 
-### 2. Measurement Sampling (`src/testing/sampler.py`)
+**3. A fixed sampling schedule.** Sample *i* is due at `start + i * interval`, measured from the start of the run, not from the previous sample, so measurement time never accumulates into drift. The actual time of every sample is recorded. *Why:* with 10 to 200 Hz runs, the worst deviation from the schedule was 0.6 to 2.7 ms, and the report shows it rather than assuming it.
 
-- **Three settings, any two are enough.** `testing.sampling` in `config.yaml` takes `measurements_count`, `total_duration_seconds` and `sampling_frequency_hz`. The interval is `1/frequency`, or `duration/count` when no frequency is given. If all three are set, sampling stops at whichever limit is hit first. Fewer than two settings, or a non-positive value, raises `SamplingConfigError`.
-- **Fixed schedule, no drift.** Sample *i* is scheduled at `start + i * interval`, measured from the start of the run, not from the previous sample, so measurement time does not accumulate into the interval.
-- **Precise waiting.** `sleep_until` (in `src/utils/Utils.py`) sleeps most of the wait and spins for the last 2 ms, because `time.sleep` alone overshoots. It uses the monotonic `time.perf_counter()`.
-- **Timing is recorded, not assumed.** `SamplingResult` keeps the actual offset of every sample from the run start, plus the total time, so timing accuracy can be checked and reported.
-- **Failures are data.** A failed measurement is kept in the results like any other (`success=False`), so one failure does not stop the run.
-- **Slow measurements** make the following samples fire late until the schedule catches up; the recorded offsets show it.
-- **Entry point.** `AmmeterTestFramework.run_test(ammeter_type, sampling=None)` samples one ammeter using the config (or a `SamplingConfig` passed in) and returns the run as a plain dict, ready for analysis and archiving.
-- **Measured timing accuracy** (macOS, against a real emulator): worst-case deviation from the schedule was 0.6 to 2.7 ms across 10 to 200 Hz runs, mean 0.2 to 1.2 ms.
+**4. Small, extendable analysis.** Statistics use the standard library (`statistics`), with failed samples reported separately. Metrics and plots are registries (`METRICS`, `PLOTS`, `COMPARISON_PLOTS`): a new metric or plot is one function and one entry. *Why:* minimal dependencies, and extension without touching the framework.
 
-### 3. Result Analysis (`src/testing/analyzer.py`, `src/testing/visualizer.py`)
+**5. Every run is archived, whole.** One JSON file per run, named `<UTC timestamp>-<random>`, holding the raw samples, analysis, accuracy and a snapshot of the config. Files are written atomically and run ids are validated (no path tricks). *Why:* a run is reproducible and comparable months later, and a crash never leaves a half-written run.
 
-- **Statistical metrics.** `analyze(run, metrics)` computes mean, median, standard deviation, minimum and maximum with the standard-library `statistics` module (no numpy needed). Standard deviation is the sample standard deviation (n-1). Results were cross-checked against numpy. The metrics to compute come from `analysis.statistical_metrics` in `config.yaml`; an unknown name raises a `ValueError` listing the valid ones.
-- **Only successful readings count.** Failed samples are excluded from the statistics and reported separately (`valid`, `failed`).
-- **Performance consistency (bonus).** `consistency` reports the success rate, the sampling frequency actually achieved, the coefficient of variation (std_dev / mean, a unit-free spread that allows comparing ammeters with very different scales) and the mean and maximum timing error of the samples against their schedule.
-- **Visualization (bonus).** `plot_measurements` saves one PNG per type in `analysis.visualization.plot_types` (`time_series`: reading against time; `histogram`: distribution of readings) into `output_dir` (default `results/plots/`). It draws headless (matplotlib `Agg` backend), so it needs no display, and matplotlib is imported only when plotting is enabled. Set `visualization.enabled: false` to skip it.
-- **Readable report.** `format_report` (`src/testing/report.py`) prints the records as a STATISTICS table (valid samples, actual total duration and the chosen metrics), a CONSISTENCY table (success rate, spread, timing error) and the plot files, one row per ammeter. `main.py` hides the emulators' own debug prints so only the report is shown.
-- **One record per run.** `AmmeterTestFramework.run_test` now returns the sampling data plus `analysis` and `plots`, in a single dict ready for archiving.
+**6. Errors are explicit.** Every deliberate error derives from `FrameworkError`; the entry points print `error: <message>` and exit 1 instead of a stack trace. A run where an ammeter gives no valid sample prints a `WARNING`, lists failures by kind in an `ERRORS` section, and exits 1. Error simulation (`error_rate`) lets this be exercised without breaking an emulator.
 
-### 4. Result Management (`src/testing/result_store.py`, `history.py`)
+## Accuracy assessment
 
-- **One run, one file.** `AmmeterTestFramework.run_all(label)` tests every ammeter as a single run and `ResultStore` archives it as `results/runs/<run_id>.json` (directory set by `result_management.directory`). JSON is human-readable and needs no database or extra library.
-- **Unique identification.** The run id is `<UTC timestamp>-<8 hex chars>` (for example `20261027T083234Z-e9eb451b`): sortable by time, and unique even for runs in the same second. A save never overwrites an existing run.
-- **Metadata.** Every run stores its creation time, an optional free-text label (`python main.py "after firmware update"`), the Python version and platform, and a full snapshot of the configuration used (ports, commands, sampling and analysis settings), so a run can be understood and reproduced later. The raw samples, analysis and plot paths are stored too.
-- **Per-run plots.** Plots go to `results/plots/<run_id>/`, so a new run never overwrites the plots of an earlier one.
-- **Robustness.** Files are written to a temporary name and moved into place, so a crash never leaves a half-written run. Run ids are validated against the generated format, which blocks path tricks such as `../x`. A missing, corrupt or invalid run gives a clear `ResultStoreError` message and exit code 1 instead of a stack trace.
-- **Retrieval and comparison.** `history.py list` shows all runs; `show <run_id>` prints the full report again; `compare <id> <id> ...` puts the runs side by side per ammeter and metric (mean, median, std dev, min, max and spread) with the change from the first to the last run. `latest` can be used instead of an id. Because the emulators produce random values, run-to-run differences are expected noise; use more measurements per run for steadier comparisons.
+The emulators do not measure a shared true current: each generates its own random value on its own scale (about 0.38 A, 69 A and 0.03 A), so comparing raw values across ammeters is meaningless. The assessment therefore uses two layers:
 
-### 5. Accuracy Assessment (bonus) (`src/testing/accuracy.py`)
+- **Precision, needing no reference:** coefficient of variation, a robust spread (IQR / median) and a 95% confidence interval of the mean (t distribution, correct for small samples, computed without scipy). All are scale-free, so the ammeters can be ranked against each other.
+- **Accuracy against the documented model:** the README's input ranges give each emulator's expected mean exactly (for example ENTES 0.055 T x 1250 = 68.75 A). The report shows the bias in percent and whether the expected value lies inside the interval, which separates a real deviation from sampling noise.
+- **Most reliable method:** the highest success rate first, then the lowest spread. In typical runs this is CIRCUTOR (CV about 0.5, and the smallest bias).
 
-- **The key limitation.** The emulators do not measure a shared true current: each one generates its own random value on a different scale (documented-model means of about 0.38 A, 69 A and 0.03 A). Comparing raw values across ammeters, or judging them against one "true" current, is therefore meaningless. The assessment uses two layers that avoid this.
-- **Precision (no reference needed).** Scale-free statistics that can be compared across ammeters: the coefficient of variation (std dev / mean), a robust spread (interquartile range / median, not distorted by outliers), and a 95% confidence interval of the mean built from the t distribution (correct for small samples; the level is `analysis.accuracy.confidence_level`) with its width as a percentage of the mean. A narrower interval means a more precise estimate.
-- **Accuracy against the documented model.** The README gives each emulator's input ranges, so its expected mean current can be derived exactly: Greenlee 5.5 V x ln(1000)/99.9 ohm = 0.3803 A, ENTES 0.055 T x 1250 = 68.75 A, CIRCUTOR 10 x 0.55 V x 0.0055 s = 0.03025 A (configured in `analysis.accuracy.expected_current_a`). The report shows each ammeter's bias in percent and whether the expected value lies inside the confidence interval, which tells a real deviation from sampling noise. An ammeter with no expected value is simply assessed on precision.
-- **Most reliable method.** Ammeters are ranked by success rate first (an ammeter that fails requests is less reliable however steady it is), then by the lowest coefficient of variation. The top one is reported as the most reliable.
-- **Verification.** The interval, spread and bias were checked against scipy and numpy on a known data set (identical results), and a simulation of 2,000 runs of the ENTES model found the expected mean inside the 95% interval 93.7% of the time.
-- **Caveats.** With few samples per run (20 by default) the ranking can change between runs, especially for Greenlee, whose readings (V/R) are heavy-tailed, so its mean and CV are unstable; use more measurements per run for a steadier verdict. The assessment is stored in the archived run (`accuracy`) and printed in the report.
+I checked the interval, spread and bias against scipy and numpy on known data, and the pure-Python t quantile against scipy over 120 combinations of degrees of freedom and probability (worst relative error 4e-11). A simulation of 2,000 runs found the expected mean inside the 95% interval 93.7% of the time.
 
-### 6. Error handling, tests and extension
+## Bonus challenges
 
-- **Errors.** Every deliberate error derives from `FrameworkError` (`src/utils/errors.py`): `ConfigError`, `AmmeterConfigError`, `SamplingConfigError`, `ResultStoreError`. `load_config` checks every required key. `AmmeterTestFramework.__init__` validates metrics, plot types and sampling settings, so a bad config fails before any sampling. `main.py` and `history.py` print `error: <message>` and exit 1 instead of a stack trace. A failed measurement is data (`success=False`), so an unreachable ammeter gives a report with a `WARNING` line and 0% success, and `main.py` exits 1.
-- **None.** `error_rate` (0 to 1, optional `error_seed`) on an ammeter entry wraps it in `FaultInjectingAmmeter`, which makes that fraction of reads fail with a reset connection, timeout, empty, garbage or non-finite reply. The framework's handling and reporting of failures can then be exercised without breaking an emulator.
-- **Reuse.** `require_known` (names validation), `build_record` (run to record), `_fmt` and `_table` (report formatting) and `wait_for_port` (emulator start-up) are shared helpers. `main.py` starts the emulators from the ports in the config.
-- **Tests.** `tests/test_framework_units.py` runs without emulators (a fake ammeter replays canned replies). Run: `.venv/bin/python -m pytest tests`.
-- **Extending.** A new ammeter type is a config entry. A new transport is a subclass of `AmmeterInterface` implementing `_read_raw`. A new metric is one entry in `METRICS`, a new plot one entry in `PLOTS`.
-- **Known limits.** Field names `cv` (accuracy) and `coefficient_of_variation` (analysis) are kept as they are so archived runs still load. A run id collision is rejected at save time; with a UUID suffix it is practically impossible.
+- **Error simulation:** `error_rate` / `error_seed` on an ammeter makes that fraction of reads fail (reset, timeout, empty, garbage or non-finite reply).
+- **Advanced visualization:** per ammeter, a rolling mean with a +/- 1 std dev band; per run, a box plot of readings normalized by each ammeter's own mean, and a bias chart with confidence intervals.
+- **Configuration-driven testing:** design decision 2.
+
+## Limitations
+
+- With 20 samples the ranking can change between runs, and Greenlee's readings (V/R) are heavy-tailed, so its mean and interval are unstable; use more measurements for a steadier verdict.
+- Tested on macOS only; the Windows handling of `SO_REUSEADDR` is by design, not tested.
+- Unit tests use a fake ammeter; the real emulators are exercised by `main.py`.
+
+More detail (per-module notes, measured figures) is in `docs/DETAILED_NOTES.md`.

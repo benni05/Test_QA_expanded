@@ -2,7 +2,7 @@ import math
 import statistics
 from typing import Dict, List, Optional
 
-from scipy import stats
+from ..utils.tdist import t_ppf
 
 
 def _assess_ammeter(record: Dict, expected: Optional[float], confidence: float) -> Dict:
@@ -22,7 +22,7 @@ def _assess_ammeter(record: Dict, expected: Optional[float], confidence: float) 
     median = statistics.median(values)
 
     # Confidence interval of the mean from the t distribution (valid for small samples)
-    margin = float(stats.t.ppf((1 + confidence) / 2, n - 1)) * std / math.sqrt(n)
+    margin = t_ppf((1 + confidence) / 2, n - 1) * std / math.sqrt(n)
     result.update({
         "mean": mean,
         "cv": std / mean if mean else None,

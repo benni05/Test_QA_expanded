@@ -5,7 +5,8 @@ testing:
     total_duration_seconds: null
     sampling_frequency_hz: 10
 
-# Connection settings per ammeter type. Optional keys: host (default "localhost"), timeout_seconds (default 2.0).
+# Connection settings per ammeter type. Optional keys: host (default "localhost"), timeout_seconds (default 2.0), enabled (default true),
+# sampling (replaces testing.sampling for this ammeter), error_rate (0 to 1) and error_seed (simulate failed reads).
 ammeters:
   greenlee:
     port: 5001
@@ -13,16 +14,21 @@ ammeters:
   entes:
     port: 5002
     command: "MEASURE_ENTES -get_data"
+    error_rate: 0.6      # 40% of reads fail
+    error_seed: 1        # optional, makes the failures repeatable
+    
   circutor:
     port: 5003
     command: "MEASURE_CIRCUTOR -get_measurement"
 
-# statistical_metrics: any of mean, median, std_dev, min, max. plot_types: any of time_series, histogram.
+# statistical_metrics: any of mean, median, std_dev, min, max.
 analysis:
   statistical_metrics: [mean, median, std_dev, min, max]
   visualization:
     enabled: true
-    plot_types: [time_series, histogram]
+    # plot_types draw one figure per ammeter: time_series, histogram, rolling_stats. comparison_plots compare the ammeters of a run: normalized_boxplot, bias.
+    plot_types: [time_series, histogram, rolling_stats]
+    comparison_plots: [normalized_boxplot, bias]
     output_dir: results/plots
   accuracy:
     confidence_level: 0.95

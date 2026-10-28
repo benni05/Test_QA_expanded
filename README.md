@@ -14,7 +14,8 @@ python3 -m venv .venv && source .venv/bin/activate && pip install -r requirement
 ```
 
 Everything is configured in `config/config.yaml`: ammeter ports and commands, sampling (set two of count, duration, frequency), statistics, plots, expected currents and the archive directory.
-Add `error_rate: 0.2` (and optionally `error_seed`) to an ammeter entry to simulate failed reads.
+Per ammeter entry: `enabled: false` skips it, `sampling:` overrides the shared sampling, `error_rate: 0.2` (and optionally `error_seed`) simulates failed reads.
+Plots: `plot_types` (per ammeter: time_series, histogram, rolling_stats) and `comparison_plots` (across ammeters: normalized_boxplot, bias).
 
 ## Project structure
 
